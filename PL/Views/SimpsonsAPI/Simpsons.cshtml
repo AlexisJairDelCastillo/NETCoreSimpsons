@@ -1,0 +1,227 @@
+﻿
+@{
+    ViewData["Title"] = "Simpsons";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div>
+    <h1 style="text-align:center">Los Simpsons</h1>
+</div>
+
+<hr>
+
+<div class="row">
+    <div id="searchContainer">
+        <input type="text" id="searchInput" placeholder="Buscar personaje por nombre...">
+
+        <button id="buscarBtn">Buscar</button>
+        <button id="limpiarBtn">Mostrar Todo</button>
+    </div>
+</div>
+
+<br />
+
+<div class="row">
+    <div id="cardsContainer" class="d-flex flex-wrap"></div>
+
+    <br />
+    <br />
+
+    <div class="pagination-container">
+        <ul class="pagination"></ul>
+    </div>
+</div>
+
+<style>
+    body {
+        background-color: #e7dc0c;
+    }
+
+    h1 {
+        text-align: center;
+        color: #0084df;
+        font-family: 'Homer Simpson Revised', sans-serif;
+        font-size: 70px;
+    }
+
+    #searchContainer {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    #searchInput {
+        padding: 10px;
+        font-size: 16px;
+        width: 300px;
+        border: 2px solid #3498db;
+        border-radius: 5px;
+        outline: none;
+        margin-right: 10px;
+    }
+
+    #buscarBtn, #limpiarBtn {
+        background-color: #3498db;
+        color: #fff;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+        #buscarBtn:hover, #limpiarBtn:hover {
+            background-color: #2078b3;
+        }
+
+    #limpiarBtn {
+        background-color: #ff2525;
+    }
+
+        #limpiarBtn:hover {
+            background-color: #b01010;
+        }
+
+    #cardsContainer {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-around;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .card {
+        background-color: deepskyblue;
+        width: 18rem;
+        margin: 20px;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7);
+        transition: transform 0.3s ease;
+    }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card img {
+            height: 200px;
+            object-fit: contain;
+            border-bottom: 1px solid #000000;
+        }
+
+    .pagination-container {
+        text-align: center;
+        margin-top: 20px;
+        overflow-x: auto;
+    }
+
+    .pagination {
+        display: flex;
+        list-style: none;
+        padding: 0;
+        overflow: auto;
+    }
+
+    .pagination-item {
+        margin-right: 10px;
+        cursor: pointer;
+        background-color: #3498db;
+        color: #fff;
+        padding: 5px 10px;
+        border-radius: 5px;
+        white-space: nowrap;
+    }
+
+        .pagination-item:hover {
+            background-color: #2078b3;
+        }
+
+</style>
+
+@section scripts{
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            var cardsPorPagina = 12;
+            var paginaActual = 1;
+
+            function mostrarPersonajes(personajes) {
+                var paginaPrincipal = (paginaActual - 1) * cardsPorPagina;
+                var ultimapagina = paginaPrincipal + cardsPorPagina;
+                var cardsPersonajes = personajes.slice(paginaPrincipal, ultimapagina);
+
+                $('#cardsContainer').empty();
+
+                //Muestra los resultados (personajes) en CARDS
+                cardsPersonajes.forEach(function (personaje) {
+                    var cardHtml = '<div class="card">';
+                    cardHtml += '<img src="' + personaje.Imagen + '" class="card-img-top" alt="' + personaje.Nombre + '">';
+                    cardHtml += '<div class="card-body">';
+                    cardHtml += '<h5 class="card-title">' + personaje.Nombre + '</h5>';
+                    cardHtml += '<p class="card-text">' + personaje.Historia + '</p>';
+                    cardHtml += '</div></div>';
+
+                    $('#cardsContainer').append(cardHtml); //Agrega las CARDS al DIV declarado en el HTML
+                });
+            }
+
+            //Funcion para la paginacion
+            function mostrarPaginacion(totalPaginas) {
+                var paginacion = '';
+                for (var i = 1; i <= totalPaginas; i++) {
+                    paginacion += '<li class="pagination-item" data-pagina="' + i + '">' + i + '</li>';
+                }
+                $('.pagination').html(paginacion);
+            }
+
+            //Funcion para acceder a la informacion de la API
+            function obtenerPersonajes(url) {
+                $.ajax({
+                    url: url,
+                    type: "GET",
+                    dataType: "json",
+                    success: function (data) {
+                        var resultados = url.includes('find') ? data.result : data.docs; //Determina que es lo que quiere traer, todos los resultados o a la busqueda
+
+                        if (Array.isArray(resultados) && resultados.length > 0) {
+                            var totalPaginas = Math.ceil(resultados.length / cardsPorPagina);
+
+                            mostrarPersonajes(resultados);
+                            mostrarPaginacion(totalPaginas);
+
+                            $('.pagination-item').click(function () {
+                                paginaActual = parseInt($(this).data('pagina'));
+                                mostrarPersonajes(resultados);
+                            });
+                        } else {
+                            $('#cardsContainer').html('<p>No se encontro ningun personaje.</p>');
+                            $('.pagination').html('');
+                        }
+                    },
+                    error: function (error) {
+                        console.log("Ocurrio un error al traer los personajes: " + error);
+                    }
+                });
+            }
+
+            //Funcion que accede a la URL de la API para realizar la busqueda
+            $('#buscarBtn').on('click', function () {
+                var busqueda = $('#searchInput').val().toLowerCase();
+                var url = "https://apisimpsons.fly.dev/api/personajes/find/" + encodeURIComponent(busqueda) + "&limit=120";
+                obtenerPersonajes(url);
+            });
+
+            //Funcion para limpiar los resultados y volver a cargar todos los personajes
+            $('#limpiarBtn').on('click', function () {
+                $('#searchInput').val('');
+                var url = "https://apisimpsons.fly.dev/api/personajes?limit=635";
+                obtenerPersonajes(url);
+            });
+
+            //Muestra todos los personajes al cargar la pagina
+            var urlInicial = "https://apisimpsons.fly.dev/api/personajes?limit=635";
+            obtenerPersonajes(urlInicial);
+        });
+    </script>
+}
